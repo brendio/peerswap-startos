@@ -37,7 +37,10 @@ export const manifest = setupManifest({
       optional: true,
       metadata: {
         title: 'Elements (Liquid)',
-        icon: 'https://raw.githubusercontent.com/ElementsProject/elements/master/contrib/elements.svg',
+        // start-cli fetches + rasterizes this at pack time, so it MUST resolve
+        // to a real image. TODO: repoint to elements-startos's own icon.svg
+        // once that package is published (its master raw URL).
+        icon: 'https://raw.githubusercontent.com/ElementsProject/elements/master/share/pixmaps/bitcoin256.png',
       },
     },
   },
