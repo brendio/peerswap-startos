@@ -22,10 +22,10 @@ type ElementsCreds = { user: string; pass: string }
  * Read the elements (Liquid) RPC credentials from the mounted `elements`
  * dependency volume.
  *
- * CONTRACT (must match the sibling elements-startos build): the elements
- * package exposes a bitcoind/elementsd-style `.cookie` file at
- * `${elementsMountpoint}/.cookie` whose contents are `<user>:<pass>`. If that
- * package instead surfaces an explicit rpcuser/rpcpassword file, adapt here.
+ * CONTRACT (reconciled with the sibling elements-startos build): the elements
+ * package exposes the elementsd `.cookie` at `${elementsMountpoint}/liquidv1/.cookie`
+ * (nested under the `liquidv1` chain dir) whose contents are `__cookie__:<password>`.
+ * We split on the first `:` -> user/pass, which elementsd accepts for RPC auth.
  *
  * Returns null when Liquid is enabled but credentials aren't available yet
  * (e.g. elements still starting); callers then fall back to Bitcoin-only so the

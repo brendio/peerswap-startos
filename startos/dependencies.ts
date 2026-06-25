@@ -23,9 +23,10 @@ export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
     deps.elements = {
       kind: 'running',
       versionRange: '>=23.2.1',
-      // Health check id exposed by the sibling elements-startos package. Adjust
-      // to match that package's actual RPC health-check id.
-      healthChecks: ['rpc'],
+      // `elementsd` is the daemon-ready health check exposed by the sibling
+      // elements-startos package (its RPC ready-check: cookie present + port
+      // listening). Gates on RPC availability, not full Liquid sync.
+      healthChecks: ['elementsd'],
     }
   }
 

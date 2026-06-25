@@ -31,19 +31,18 @@ export const lndCertPath = `${lndMountpoint}/tls.cert`
 /** Internal hostname:port for LND's real gRPC endpoint on StartOS. */
 export const lndGrpcHost = 'lnd.startos:10009'
 
-// --- elements dependency contract (see ABOUT.md / sibling elements-startos) ---
+// --- elements dependency contract (reconciled with sibling elements-startos) ---
 //
-// We expect the `elements` package to expose, on its mounted volume:
-//   - an RPC cookie file at `${elementsMountpoint}/.cookie` of the form
-//     `<user>:<pass>` (bitcoind/elementsd `.cookie` convention), OR
-//   - rpcuser/rpcpassword that the elements package surfaces via that cookie.
-// Liquid mainnet RPC is reachable at `elements.startos:7041`.
-//
-// NOTE: this contract MUST be reconciled with the sibling elements-startos
-// build. If that package writes credentials under a different filename
-// (e.g. `elements.conf` or a custom credentials file), update
-// `readElementsCredentials` in reconcileConfig.ts accordingly.
-export const elementsCookiePath = `${elementsMountpoint}/.cookie`
+// The `elements` package (id `elements`) exposes, on its read-only mounted
+// volume, the elementsd RPC cookie. Because elementsd runs the `liquidv1`
+// chain, the cookie is nested under the chain subdir:
+//   `${elementsMountpoint}/liquidv1/.cookie`
+// Its contents are `__cookie__:<password>` (bitcoind/elementsd convention);
+// `readElementsCredentials` splits on the first `:` -> user `__cookie__`,
+// pass `<password>`, which elementsd accepts for RPC auth.
+// Liquid mainnet RPC is reachable at `elements.startos:7041`, wallet `peerswap`
+// (pre-created by the elements package). Dep health check id: `elementsd`.
+export const elementsCookiePath = `${elementsMountpoint}/liquidv1/.cookie`
 export const elementsRpcHost = 'http://elements.startos'
 export const elementsRpcPort = '7041'
 export const elementsRpcWallet = 'peerswap'
