@@ -1,5 +1,5 @@
 import { T } from '@start9labs/start-sdk'
-import { readFile } from 'fs/promises'
+import { access, readdir, readFile } from 'fs/promises'
 import { peerswapConfFile, PeerswapConf } from './fileModels/peerswapConf'
 import { pswebConfigFile } from './fileModels/pswebConfig'
 import { Settings } from './fileModels/settings'
@@ -9,14 +9,46 @@ import {
   elementsRpcPort,
   elementsRpcWallet,
   lndCertPath,
+  lndChainDir,
   lndGrpcHost,
-  lndMacaroonPath,
+  lndMacaroonPath as lndMacaroonPathDefault,
   peerswapdHost,
   peerswapdPort,
   uiPort,
 } from './utils'
 
 type ElementsCreds = { user: string; pass: string }
+
+/**
+ * Resolve LND's admin macaroon path by discovering the active network from the
+ * mounted LND volume, instead of assuming mainnet. LND nests the macaroon under
+ * `<chainDir>/<network>/admin.macaroon`; whichever network LND actually runs
+ * (mainnet/signet/testnet/regtest) is the one directory present. We prefer
+ * mainnet when multiple exist, then fall back to the mainnet path if the dir
+ * isn't readable yet (LND still initializing — a later reconcile will fix it).
+ */
+async function resolveLndMacaroonPath(): Promise<string> {
+  const preferred = ['mainnet', 'signet', 'testnet', 'testnet4', 'regtest']
+  try {
+    const entries = await readdir(lndChainDir)
+    const ordered = [
+      ...preferred.filter((n) => entries.includes(n)),
+      ...entries.filter((n) => !preferred.includes(n)),
+    ]
+    for (const net of ordered) {
+      const candidate = `${lndChainDir}/${net}/admin.macaroon`
+      try {
+        await access(candidate)
+        return candidate
+      } catch {
+        // macaroon not in this network dir yet; try the next
+      }
+    }
+  } catch {
+    // chain dir not present/readable yet
+  }
+  return lndMacaroonPathDefault
+}
 
 /**
  * Read the elements (Liquid) RPC credentials from the mounted `elements`
@@ -54,6 +86,7 @@ async function readElementsCredentials(): Promise<ElementsCreds | null> {
 function buildPeerswapConf(
   settings: Settings,
   elementsCreds: ElementsCreds | null,
+  lndMacaroonPath: string,
 ): PeerswapConf {
   const conf: PeerswapConf = {}
 
@@ -109,9 +142,14 @@ export async function reconcileConfig(
     )
   }
 
+  const lndMacaroonPath =
+    settings.lightningBackend === 'lnd'
+      ? await resolveLndMacaroonPath()
+      : lndMacaroonPathDefault
+
   await peerswapConfFile.write(
     effects,
-    buildPeerswapConf(settings, elementsCreds),
+    buildPeerswapConf(settings, elementsCreds, lndMacaroonPath),
   )
 
   // Pin the psweb-managed JSON to the StartOS-owned values. Merge so psweb's

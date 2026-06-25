@@ -26,7 +26,13 @@ export const lndMountpoint = '/mnt/lnd'
 export const elementsMountpoint = '/mnt/elements'
 
 // --- Paths LND exposes inside its mounted volume (StartOS 0.4 lnd package) ---
-export const lndMacaroonPath = `${lndMountpoint}/data/chain/bitcoin/mainnet/admin.macaroon`
+// LND nests the admin macaroon under the active network:
+//   <mount>/data/chain/bitcoin/<network>/admin.macaroon  (mainnet|signet|testnet|regtest)
+// We discover <network> at runtime from the mounted volume rather than assume
+// mainnet — see resolveLndMacaroonPath() in reconcileConfig.ts.
+export const lndChainDir = `${lndMountpoint}/data/chain/bitcoin`
+/** Fallback when the chain dir can't be read yet (LND still initializing). */
+export const lndMacaroonPath = `${lndChainDir}/mainnet/admin.macaroon`
 export const lndCertPath = `${lndMountpoint}/tls.cert`
 /** Internal hostname:port for LND's real gRPC endpoint on StartOS. */
 export const lndGrpcHost = 'lnd.startos:10009'
