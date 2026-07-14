@@ -65,7 +65,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       // has already started against the correct file by then.
       exec: {
         fn: async () => {
-          await reconcileConfig(effects, settings)
+          await reconcileConfig(effects, settings, peerswapSub)
           return null
         },
       },

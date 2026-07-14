@@ -1,5 +1,4 @@
-import { T } from '@start9labs/start-sdk'
-import { access, readdir, readFile } from 'fs/promises'
+import { T, SubContainer } from '@start9labs/start-sdk'
 import { peerswapConfFile, PeerswapConf } from './fileModels/peerswapConf'
 import { pswebConfigFile } from './fileModels/pswebConfig'
 import { Settings } from './fileModels/settings'
@@ -27,22 +26,21 @@ type ElementsCreds = { user: string; pass: string }
  * mainnet when multiple exist, then fall back to the mainnet path if the dir
  * isn't readable yet (LND still initializing — a later reconcile will fix it).
  */
-async function resolveLndMacaroonPath(): Promise<string> {
+async function resolveLndMacaroonPath(sub: SubContainer<any>): Promise<string> {
   const preferred = ['mainnet', 'signet', 'testnet', 'testnet4', 'regtest']
   try {
-    const entries = await readdir(lndChainDir)
+    const ls = await sub.exec(['ls', lndChainDir])
+    if (ls.exitCode !== 0) return lndMacaroonPathDefault
+    const entries = String(ls.stdout).split('\n').filter(Boolean)
     const ordered = [
       ...preferred.filter((n) => entries.includes(n)),
       ...entries.filter((n) => !preferred.includes(n)),
     ]
     for (const net of ordered) {
       const candidate = `${lndChainDir}/${net}/admin.macaroon`
-      try {
-        await access(candidate)
-        return candidate
-      } catch {
-        // macaroon not in this network dir yet; try the next
-      }
+      const stat = await sub.exec(['test', '-f', candidate])
+      if (stat.exitCode === 0) return candidate
+      // macaroon not in this network dir yet; try the next
     }
   } catch {
     // chain dir not present/readable yet
@@ -62,10 +60,18 @@ async function resolveLndMacaroonPath(): Promise<string> {
  * Returns null when Liquid is enabled but credentials aren't available yet
  * (e.g. elements still starting); callers then fall back to Bitcoin-only so the
  * daemon never crashes on a missing cookie.
+ *
+ * Reads happen via `SubContainer.exec` because dependency volumes are mounted
+ * into the SUBCONTAINER's rootfs, not the package's JS runtime container —
+ * a plain fs.readFile here sees an empty /mnt and silently falls back.
  */
-async function readElementsCredentials(): Promise<ElementsCreds | null> {
+async function readElementsCredentials(
+  sub: SubContainer<any>,
+): Promise<ElementsCreds | null> {
   try {
-    const raw = (await readFile(elementsCookiePath, 'utf-8')).trim()
+    const res = await sub.exec(['cat', elementsCookiePath])
+    if (res.exitCode !== 0) return null
+    const raw = String(res.stdout).trim()
     const sep = raw.indexOf(':')
     if (sep === -1) return null
     return { user: raw.slice(0, sep), pass: raw.slice(sep + 1) }
@@ -130,9 +136,10 @@ function buildPeerswapConf(
 export async function reconcileConfig(
   effects: T.Effects,
   settings: Settings,
+  sub: SubContainer<any>,
 ): Promise<void> {
   const elementsCreds = settings.liquidEnabled
-    ? await readElementsCredentials()
+    ? await readElementsCredentials(sub)
     : null
 
   if (settings.liquidEnabled && !elementsCreds) {
@@ -144,7 +151,7 @@ export async function reconcileConfig(
 
   const lndMacaroonPath =
     settings.lightningBackend === 'lnd'
-      ? await resolveLndMacaroonPath()
+      ? await resolveLndMacaroonPath(sub)
       : lndMacaroonPathDefault
 
   await peerswapConfFile.write(
