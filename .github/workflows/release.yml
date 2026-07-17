@@ -1,9 +1,11 @@
 name: Release
 
+# Manual-only: this shared workflow publishes to a self-hosted registry +
+# S3 bucket (vars.RELEASE_REGISTRY / S3_S9PKS_BASE_URL + S3 secrets), which
+# this package does not use — releases are cut as GitHub releases and
+# submitted to the Start9 community registry instead.
 on:
-  push:
-    tags:
-      - 'v*.*'
+  workflow_dispatch:
 
 jobs:
   release:

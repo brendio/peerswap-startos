@@ -1,9 +1,10 @@
 name: Tag and Release
 
+# Manual-only: this shared workflow tags/releases against a self-hosted
+# reference registry (vars.REFERENCE_REGISTRY etc.), which this package does
+# not use — see release.yml.
 on:
-  push:
-    branches: ['master']
-    paths-ignore: ['*.md']
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
