@@ -5,7 +5,7 @@ export const manifest = setupManifest({
   id: 'peerswap',
   title: 'PeerSwap',
   license: 'mit',
-  packageRepo: 'https://github.com/Start9Labs/peerswap-startos',
+  packageRepo: 'https://github.com/brendio/peerswap-startos',
   upstreamRepo: 'https://github.com/ElementsProject/peerswap',
   marketingUrl: 'https://www.peerswap.dev/',
   donationUrl: null,
@@ -38,9 +38,9 @@ export const manifest = setupManifest({
       metadata: {
         title: 'Elements (Liquid)',
         // start-cli fetches + rasterizes this at pack time, so it MUST resolve
-        // to a real image. TODO: repoint to elements-startos's own icon.svg
-        // once that package is published (its master raw URL).
-        icon: 'https://raw.githubusercontent.com/ElementsProject/elements/master/share/pixmaps/bitcoin256.png',
+        // to a real image — build peerswap only after elements-startos is
+        // public on GitHub with icon.svg on master.
+        icon: 'https://raw.githubusercontent.com/brendio/elements-startos/master/icon.svg',
       },
     },
   },
